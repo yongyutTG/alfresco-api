@@ -1,5 +1,7 @@
 # Alfresco API Gateway
 
+เอกสารสำหรับ dev ภายนอก: [API_SPEC.md](API_SPEC.md)
+
 Node.js API สำหรับเรียก Alfresco Community 4.2.0 ผ่าน CMIS Browser Binding
 
 ## Run
@@ -155,4 +157,5 @@ Restart Apache แล้วเรียกผ่าน Apache เช่น:
 ```text
 http://localhost/node-api/api/alfresco/folders?path=/Sites/tg-saving/documentLibrary
 ```
+
 
