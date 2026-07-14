@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dev Alfresco API Client</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>Dev Alfresco API Client</h1>
+      <p id="currentPath">ยังไม่ได้เลือกโฟลเดอร์</p>
+    </div>
+    <div class="api-status" id="apiStatus">พร้อมใช้งาน</div>
+  </header>
+
+  <main>
+    <section class="controls" aria-label="Alfresco controls">
+      <label>
+        <span>API base URL</span>
+        <input id="apiBaseUrl" value="http://localhost:3000" autocomplete="off">
+      </label>
+
+      <label>
+        <span>Folder</span>
+        <select id="folderSelect">
+          <option value="">-- เลือกโฟลเดอร์ --</option>
+        </select>
+      </label>
+
+      <label>
+        <span>ค้นหาชื่อไฟล์</span>
+        <input id="keyword" type="search" placeholder="เช่น 026277, 38849, .pdf" autocomplete="off">
+      </label>
+
+      <label>
+        <span>จำนวนต่อหน้า</span>
+        <select id="pageSize">
+          <option value="50">50</option>
+          <option value="100" selected>100</option>
+          <option value="250">250</option>
+          <option value="500">500</option>
+        </select>
+      </label>
+
+      <button id="loadBtn" type="button">โหลด</button>
+      <button id="clearBtn" type="button" class="secondary">ล้างค้นหา</button>
+    </section>
+
+    <section class="summary">
+      <div id="summaryText">กดโหลดเพื่อเรียก API</div>
+      <div id="pageText"></div>
+    </section>
+
+    <section class="table-shell">
+      <table>
+        <thead>
+          <tr>
+            <th class="col-index">#</th>
+            <th>ชื่อไฟล์</th>
+            <th class="col-size">ขนาด</th>
+            <th class="col-date">วันที่สร้าง</th>
+            <th class="col-action">เปิดไฟล์</th>
+          </tr>
+        </thead>
+        <tbody id="fileRows">
+          <tr><td colspan="5" class="empty">ยังไม่มีข้อมูล</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="pager">
+      <button id="prevBtn" type="button" class="secondary">ก่อนหน้า</button>
+      <button id="nextBtn" type="button">ถัดไป</button>
+    </section>
+
+    <section class="developer-box">
+      <h2>ตัวอย่าง request ล่าสุด</h2>
+      <pre id="requestPreview">-</pre>
+    </section>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>
+
+

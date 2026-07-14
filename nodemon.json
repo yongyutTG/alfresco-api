@@ -1,0 +1,6 @@
+{
+  "watch": ["server.js", "public", "dev-frontend"],
+  "ext": "js,json,html,css",
+  "ignore": ["node_modules", "server.out.log", "server.err.log"],
+  "exec": "node server.js"
+}
