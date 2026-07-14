@@ -2,7 +2,7 @@
 
 เอกสารนี้สำหรับ dev ภายนอกที่ต้องเรียกใช้ API เพื่อดึง folder, ค้นหาไฟล์ และเปิดไฟล์จาก Alfresco ผ่าน Node.js API Gateway
 
-> Dev ภายนอกไม่ต้องเรียก Alfresco `172.17.1.21` โดยตรง ให้เรียกผ่าน API Gateway เท่านั้น
+> Dev ภายนอกไม่ต้องเรียก Alfresco `{IP Server}` โดยตรง ให้เรียกผ่าน API Gateway เท่านั้น
 
 ## 1. Base URL
 
@@ -113,7 +113,7 @@ Error Example:
 {
   "message": "Cannot connect to Alfresco",
   "status": 500,
-  "error": "connect ETIMEDOUT 172.17.1.21:80"
+  "error": "connect ETIMEDOUT {IP Server}:80"
 }
 ```
 
@@ -407,7 +407,7 @@ Content-Disposition: inline; filename="file.pdf"
 {
   "message": "Cannot list Alfresco documents",
   "status": 500,
-  "error": "connect ETIMEDOUT 172.17.1.21:80"
+  "error": "connect ETIMEDOUT {IP Server}:80"
 }
 ```
 

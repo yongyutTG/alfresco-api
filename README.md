@@ -127,7 +127,7 @@ http://localhost:3000/api/alfresco/documents/7b815e16-a594-4864-9665-cfda64e8d88
 สร้างไฟล์ `.env` ที่ `C:\xampp\htdocs\alfresco-api\.env`
 
 ```env
-ALFRESCO_HOST=http://172.17.1.21
+ALFRESCO_HOST=IP server
 ALFRESCO_USER=your_user
 ALFRESCO_PASS=your_password
 PORT=3000
