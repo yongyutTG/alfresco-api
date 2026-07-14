@@ -1,7 +1,12 @@
+// Alfresco API Gateway
+// โค้ดนี้ทำหน้าที่เป็นตัวกลางระหว่าง Frontend/External Dev กับ Alfresco 4.2.0
+// ฝั่งนอกเรียก REST API ของ Node.js แล้ว Node.js จะไปเรียก Alfresco ผ่าน CMIS Browser Binding อีกที
 const express = require("express");
 const axios = require("axios");
 const path = require("path");
 
+// โหลดค่า .env แบบง่าย ๆ เพื่อให้รันกับ Node ตรง ๆ ได้โดยไม่ต้องติดตั้ง dotenv
+// ใช้ตั้งค่า ALFRESCO_HOST, ALFRESCO_USER, ALFRESCO_PASS, API_TOKEN, PORT
 function loadLocalEnv() {
   const envPath = path.join(__dirname, ".env");
 
@@ -34,6 +39,28 @@ function loadLocalEnv() {
 }
 
 loadLocalEnv();
+
+// ===== Flow หลักของระบบ =====
+// 1) External Dev/Postman เรียก /api/alfresco/* พร้อม Header: Authorization: Bearer <API_TOKEN>
+// 2) Dev Frontend เรียก /dev-api/alfresco/* เฉพาะ localhost ไม่ต้องถือ Bearer token ใน browser
+// 3) Route handler จะเรียก helper เช่น getChildrenByPath(), queryDocumentsInTree(), searchDocumentsInTree()
+// 4) Helper จะยิงไป Alfresco CMIS ด้วย Basic Auth จาก ALFRESCO_USER/ALFRESCO_PASS ใน .env
+// 5) mapCmisObject() แปลง response ของ Alfresco ให้อ่านง่าย ก่อนส่งกลับเป็น JSON
+
+// ===== Route map สำหรับอ่านโค้ดเร็ว =====
+// GET /api/health
+//   -> axios.get(ALFRESCO_HOST/alfresco/service/api/server) ตรวจ version/server status
+// GET /api/alfresco/folders?path=...
+//   -> getChildrenByPath(path) -> mapCmisObject() -> filter เฉพาะ folder
+// GET /api/alfresco/folders/files?path=...
+//   -> queryDocumentsInTree(path) -> getObjectByPath(path) -> CMIS query IN_TREE(folderId)
+// GET /api/alfresco/documents?folderPath=...
+//   -> ถ้าไม่มี q: queryDocumentsInTree(folderPath)
+//   -> ถ้ามี q: searchDocumentsInTree(folderPath, q)
+// GET /api/alfresco/documents/:id/content?name=...
+//   -> streamDocumentContent(res, id, name) เพื่อ stream PDF/content กลับ browser
+// GET /dev-api/alfresco/*
+//   -> ใช้ helper ชุดเดียวกับ /api/alfresco/* แต่ป้องกันด้วย requireLocalhost แทน Bearer token
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
 
@@ -50,6 +77,8 @@ app.use(express.static(path.join(__dirname, "public")));
 app.use("/dev-frontend", requireLocalhost, express.static(path.join(__dirname, "dev-frontend")));
 app.use("/api/alfresco", requireBearerToken);
 
+// Middleware สำหรับ /dev-frontend และ /dev-api เท่านั้น
+// จุดประสงค์: ให้หน้า demo ในเครื่องเรียก API ได้โดยไม่ต้องเอา Bearer token ไปไว้ใน browser
 function requireLocalhost(req, res, next) {
   const ip = req.ip || req.socket.remoteAddress || "";
   const normalizedIp = ip.replace(/^::ffff:/, "");
@@ -61,6 +90,8 @@ function requireLocalhost(req, res, next) {
 
   next();
 }
+// Middleware สำหรับ /api/alfresco/* ที่ external dev/Postman เรียกใช้
+// ทุกเส้นใต้ /api/alfresco ต้องส่ง Header: Authorization: Bearer <API_TOKEN>
 function requireBearerToken(req, res, next) {
   if (!API_TOKEN) {
     return res.status(500).json({ message: "API_TOKEN is not configured" });
@@ -75,11 +106,15 @@ function requireBearerToken(req, res, next) {
 
   next();
 }
+// สร้าง Basic Auth header สำหรับให้ Node.js ไปคุยกับ Alfresco
+// ใช้เฉพาะฝั่ง server เท่านั้น ห้ามส่ง ALFRESCO_USER/ALFRESCO_PASS ไปที่ frontend
 function authHeader() {
   const token = Buffer.from(`${ALFRESCO_USER}:${ALFRESCO_PASS}`, "utf8").toString("base64");
   return { Authorization: `Basic ${token}` };
 }
 
+// แปลง path ของ Alfresco เช่น /Sites/tg-saving/documentLibrary/การเงิน
+// ให้เป็น URL แบบ CMIS Browser Binding ที่ Alfresco 4.2.0 รองรับ
 function cmisUrlForPath(folderPath = "/") {
   const normalizedPath = String(folderPath || "/").trim();
 
@@ -96,6 +131,7 @@ function cmisUrlForPath(folderPath = "/") {
   return `${ALFRESCO_CMIS}/root/${encodedSegments}`;
 }
 
+// อ่านค่า property จาก CMIS response เพราะ Alfresco จะห่อค่าไว้ใน properties[key].value
 function getProp(properties, key) {
   const value = properties?.[key]?.value ?? null;
 
@@ -106,6 +142,8 @@ function getProp(properties, key) {
   return value;
 }
 
+// แปลง object ดิบจาก Alfresco CMIS ให้เป็น JSON รูปแบบที่ frontend/dev อ่านง่าย
+// ใช้โดย getChildrenByPath(), queryDocumentsInTree(), searchDocumentsInTree(), getObjectByPath(), getObjectById()
 function mapCmisObject(item) {
   const object = item.object || item;
   const props = object.properties || {};
@@ -137,6 +175,8 @@ function mapCmisObject(item) {
   };
 }
 
+// ทำ error จาก axios ให้ส่งกลับเป็น JSON ได้อย่างปลอดภัย
+// สำคัญ: กันปัญหา circular structure จาก response stream/socket
 function safeErrorData(err) {
   const data = err.response?.data;
 
@@ -163,6 +203,7 @@ function safeErrorData(err) {
   };
 }
 
+// รูปแบบกลางสำหรับตอบ error ทุก route
 function handleError(res, message, err) {
   const status = err.response?.status || 500;
 
@@ -173,6 +214,8 @@ function handleError(res, message, err) {
   });
 }
 
+// เรียกลูกของ folder ตาม path ที่ส่งมา
+// ใช้กับ route: /api/alfresco/folders, /api/alfresco/children, /api/alfresco/root, /api/alfresco/sites, /dev-api/alfresco/folders
 async function getChildrenByPath(folderPath = "/") {
   const result = await axios.get(cmisUrlForPath(folderPath), {
     headers: authHeader(),
@@ -184,6 +227,8 @@ async function getChildrenByPath(folderPath = "/") {
   return (result.data.objects || []).map(mapCmisObject);
 }
 
+// เดินอ่านไฟล์แบบ recursive ด้วยการไล่ children ทีละ folder
+// ตอนนี้ไม่ได้ใช้กับ RESTful route หลักแล้ว เพราะเปลี่ยนมาใช้ CMIS query IN_TREE ที่เร็วกว่า
 async function getFilesRecursive(folderPath, options = {}) {
   const maxDepth = Number(options.maxDepth ?? 20);
   const files = [];
@@ -211,14 +256,18 @@ async function getFilesRecursive(folderPath, options = {}) {
   return files;
 }
 
+// escape เครื่องหมาย single quote ใน CMIS query เพื่อกัน query พัง
 function escapeCmisString(value) {
   return String(value).replace(/'/g, "''");
 }
 
+// escape keyword สำหรับใช้กับ CMIS LIKE เช่น %, _, backslash
 function escapeCmisLike(value) {
   return escapeCmisString(value).replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
 }
 
+// ดึงเอกสารทั้งหมดใต้ folderPath รวมเอกสารใน subfolder
+// ใช้กับ route: /api/alfresco/folders/files, /api/alfresco/documents เมื่อไม่มี q, /dev-api/alfresco/documents เมื่อไม่มี q
 async function queryDocumentsInTree(folderPath, options = {}) {
   const folder = await getObjectByPath(folderPath);
   const maxItems = Math.min(Number(options.maxItems || 1000), 60000);
@@ -247,6 +296,8 @@ async function queryDocumentsInTree(folderPath, options = {}) {
   };
 }
 
+// ค้นหาเอกสารใต้ folderPath จากชื่อไฟล์ด้วย q/keyword/name
+// ใช้กับ route: /api/alfresco/documents เมื่อมี q, /api/alfresco/search-files, /dev-api/alfresco/documents เมื่อมี q
 async function searchDocumentsInTree(folderPath, searchText, options = {}) {
   const folder = await getObjectByPath(folderPath);
   const maxItems = Math.min(Number(options.maxItems || 100), 5000);
@@ -297,6 +348,8 @@ async function searchDocumentsInTree(folderPath, searchText, options = {}) {
   };
 }
 
+// อ่าน metadata ของ object/folder จาก path
+// ใช้ก่อน queryDocumentsInTree/searchDocumentsInTree เพื่อหา folderId สำหรับ CMIS IN_TREE(folderId)
 async function getObjectByPath(objectPath = "/") {
   const result = await axios.get(cmisUrlForPath(objectPath), {
     headers: authHeader(),
@@ -308,6 +361,8 @@ async function getObjectByPath(objectPath = "/") {
   return mapCmisObject(result.data);
 }
 
+// อ่าน metadata ของ object จาก id
+// ใช้กับ legacy route: /api/alfresco/object?id=...
 async function getObjectById(id) {
   const result = await axios.get(`${ALFRESCO_CMIS}/root`, {
     headers: authHeader(),
@@ -320,6 +375,8 @@ async function getObjectById(id) {
   return mapCmisObject(result.data);
 }
 
+// ดาวน์โหลด/เปิด content ของ document จาก document id
+// ใช้กับ route: /api/alfresco/documents/:id/content, /api/alfresco/content, /dev-api/alfresco/documents/:id/content
 async function streamDocumentContent(res, id, name) {
   if (!id || id === "DOCUMENT_ID") {
     return res.status(400).json({
@@ -600,6 +657,9 @@ app.listen(PORT, () => {
   console.log(`Node API running at http://localhost:${PORT}`);
   console.log(`Alfresco server: ${ALFRESCO_HOST}`);
 });
+
+
+
 
 
 
