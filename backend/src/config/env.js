@@ -48,6 +48,7 @@ const env = {
   alfrescoUser: process.env.ALFRESCO_USER,
   alfrescoPass: process.env.ALFRESCO_PASS,
   apiToken: process.env.API_TOKEN,
+  writeApiToken: process.env.WRITE_API_TOKEN,
 };
 
 module.exports = { env };

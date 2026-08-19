@@ -125,6 +125,48 @@ async function streamDocumentContent(res, id, name) {
   alfrescoRepo.sendContentStream(res, result, name);
 }
 
+async function uploadDocument(folderPath, file, name) {
+  if (!folderPath || !String(folderPath).trim()) {
+    const error = new Error("Missing folderPath");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!file) {
+    const error = new Error("Missing file field");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return alfrescoRepo.createDocument(folderPath, file, name);
+}
+
+async function renameDocument(id, name) {
+  if (!id) {
+    const error = new Error("Missing document id");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!name || !String(name).trim()) {
+    const error = new Error("Missing new file name");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return alfrescoRepo.updateDocumentName(id, name);
+}
+
+async function deleteDocument(id) {
+  if (!id) {
+    const error = new Error("Missing document id");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return alfrescoRepo.deleteDocument(id);
+}
+
 function formatDocumentQueryResult(data, folderPath, folderId, paging) {
   return {
     path: folderPath,
@@ -154,5 +196,8 @@ module.exports = {
   findDocuments,
   readObject,
   streamDocumentContent,
+  uploadDocument,
+  renameDocument,
+  deleteDocument,
   withNextSkipCount,
 };

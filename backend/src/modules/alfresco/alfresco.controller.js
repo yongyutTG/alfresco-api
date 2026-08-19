@@ -55,6 +55,48 @@ async function documentContent(req, res) {
   }
 }
 
+async function uploadDocument(req, res) {
+  try {
+    const folderPath = req.body.folderPath || req.body.path || "/Sites/tg-saving/documentLibrary/การเงิน";
+    const fileName = req.body.name || req.body.fileName || req.file?.originalname;
+    const document = await alfrescoService.uploadDocument(folderPath, req.file, fileName);
+
+    res.status(201).json({
+      message: "Uploaded document successfully",
+      document,
+    });
+  } catch (err) {
+    handleError(res, "Cannot upload Alfresco document", err);
+  }
+}
+
+async function renameDocument(req, res) {
+  try {
+    const fileName = req.body.name || req.body.fileName;
+    const document = await alfrescoService.renameDocument(req.params.id, fileName);
+
+    res.json({
+      message: "Renamed document successfully",
+      document,
+    });
+  } catch (err) {
+    handleError(res, "Cannot rename Alfresco document", err);
+  }
+}
+
+async function deleteDocument(req, res) {
+  try {
+    const result = await alfrescoService.deleteDocument(req.params.id);
+
+    res.json({
+      message: "Deleted document successfully",
+      ...result,
+    });
+  } catch (err) {
+    handleError(res, "Cannot delete Alfresco document", err);
+  }
+}
+
 async function root(req, res) {
   try {
     const items = await alfrescoService.listChildren("/");
@@ -189,6 +231,9 @@ module.exports = {
   foldersFiles,
   documents,
   documentContent,
+  uploadDocument,
+  renameDocument,
+  deleteDocument,
   root,
   sites,
   children,

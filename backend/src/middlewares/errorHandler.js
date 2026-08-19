@@ -25,7 +25,7 @@ function safeErrorData(err) {
 
 // รูปแบบกลางสำหรับตอบ error ทุก route
 function handleError(res, message, err) {
-  const status = err.response?.status || 500;
+  const status = err.statusCode || err.response?.status || 500;
 
   res.status(status).json({
     message,

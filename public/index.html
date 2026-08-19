@@ -232,6 +232,7 @@
       <a href="#folders">List Folders</a>
       <a href="#documents">List/Search Documents</a>
       <a href="#content">Open File Content</a>
+      <a href="#write">Write Documents</a>
       <a href="#postman">Postman</a>
       <a href="#errors">Errors</a>
     </nav>
@@ -295,6 +296,21 @@ Alfresco CMIS API</code></pre>
                 <td><span class="badge">GET</span></td>
                 <td><code>/api/alfresco/documents/:id/content</code></td>
                 <td>เปิดหรือดาวน์โหลดไฟล์ด้วย document id</td>
+              </tr>
+              <tr>
+                <td><span class="badge">POST</span></td>
+                <td><code>/api/alfresco/documents</code></td>
+                <td>อัปโหลดไฟล์ ใช้ <code>WRITE_API_TOKEN</code></td>
+              </tr>
+              <tr>
+                <td><span class="badge">PATCH</span></td>
+                <td><code>/api/alfresco/documents/:id</code></td>
+                <td>แก้ชื่อไฟล์ ใช้ <code>WRITE_API_TOKEN</code></td>
+              </tr>
+              <tr>
+                <td><span class="badge">DELETE</span></td>
+                <td><code>/api/alfresco/documents/:id</code></td>
+                <td>ลบไฟล์ ใช้ <code>WRITE_API_TOKEN</code></td>
               </tr>
             </tbody>
           </table>
@@ -384,6 +400,35 @@ Authorization: Bearer &lt;API_TOKEN&gt;</code></pre>
         </div>
         <pre><code>GET http://localhost:3005/api/alfresco/documents/7b815e16-a594-4864-9665-cfda64e8d880%3B1.0/content?name=file.pdf
 Authorization: Bearer &lt;API_TOKEN&gt;</code></pre>
+      </section>
+
+      <section id="write">
+        <h2>Write Documents</h2>
+        <p>กลุ่มนี้ใช้สำหรับอัปโหลด, แก้ชื่อไฟล์, ลบไฟล์ ต้องใช้ <code>WRITE_API_TOKEN</code></p>
+
+        <h3>Upload</h3>
+        <pre><code>POST http://localhost:3005/api/alfresco/documents
+Authorization: Bearer &lt;WRITE_API_TOKEN&gt;
+Content-Type: multipart/form-data
+
+folderPath=/Sites/tg-saving/documentLibrary/การเงิน
+file=&lt;เลือกไฟล์&gt;
+name=optional-file-name.pdf</code></pre>
+
+        <h3>Rename</h3>
+        <pre><code>PATCH http://localhost:3005/api/alfresco/documents/&lt;DOCUMENT_ID&gt;
+Authorization: Bearer &lt;WRITE_API_TOKEN&gt;
+Content-Type: application/json
+
+{
+  "name": "new-file-name.pdf"
+}</code></pre>
+
+        <h3>Delete</h3>
+        <pre><code>DELETE http://localhost:3005/api/alfresco/documents/&lt;DOCUMENT_ID&gt;
+Authorization: Bearer &lt;WRITE_API_TOKEN&gt;</code></pre>
+
+        <p class="note warning">สิทธิ์สุดท้ายอิงจาก service account ที่ <code>alfresco-api</code> ใช้ไปเรียก Alfresco</p>
       </section>
 
       <section id="postman">

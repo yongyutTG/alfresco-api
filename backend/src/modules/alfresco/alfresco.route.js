@@ -1,9 +1,16 @@
 const express = require("express");
+const multer = require("multer");
 const alfrescoController = require("./alfresco.controller");
-const { requireBearerToken, requireLocalhost } = require("../../middlewares/auth");
+const { requireBearerToken, requireLocalhost, requireWriteBearerToken } = require("../../middlewares/auth");
 
 const apiRouter = express.Router();
 const devRouter = express.Router();
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 50 * 1024 * 1024,
+  },
+});
 
 // ===== External Dev/Postman API =====
 // ทุกเส้นในกลุ่มนี้ต้องแนบ Header: Authorization: Bearer <API_TOKEN>
@@ -24,6 +31,20 @@ apiRouter.get("/alfresco/documents", requireBearerToken, alfrescoController.docu
 
 // GET /api/alfresco/documents/:id/content?name=file.pdf
 apiRouter.get("/alfresco/documents/:id/content", requireBearerToken, alfrescoController.documentContent);
+
+// ===== Write API =====
+// ใช้ WRITE_API_TOKEN แยกจาก read token
+
+// POST /api/alfresco/documents
+// multipart/form-data: folderPath=<path>, file=<binary>, name=<optional file name>
+apiRouter.post("/alfresco/documents", requireWriteBearerToken, upload.single("file"), alfrescoController.uploadDocument);
+
+// PATCH /api/alfresco/documents/:id
+// application/json: { "name": "new-file-name.pdf" }
+apiRouter.patch("/alfresco/documents/:id", requireWriteBearerToken, alfrescoController.renameDocument);
+
+// DELETE /api/alfresco/documents/:id
+apiRouter.delete("/alfresco/documents/:id", requireWriteBearerToken, alfrescoController.deleteDocument);
 
 // Legacy routes: เก็บไว้เพื่อไม่ให้ระบบเดิมที่เรียก path เก่าพัง
 apiRouter.get("/alfresco/root", requireBearerToken, alfrescoController.root);

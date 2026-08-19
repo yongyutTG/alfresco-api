@@ -32,6 +32,12 @@ http://localhost:3005
 Authorization: Bearer <API_TOKEN>
 ```
 
+สำหรับ write endpoint เช่น upload, rename, delete ต้องใช้ token แยก:
+
+```http
+Authorization: Bearer <WRITE_API_TOKEN>
+```
+
 ตัวอย่าง:
 
 ```http
@@ -71,6 +77,9 @@ Accept: application/json
 | GET | `/api/alfresco/folders/files` | ดูไฟล์ทั้งหมดใต้ folder รวม subfolder |
 | GET | `/api/alfresco/documents` | ดูไฟล์หรือค้นหาไฟล์ใน folder รวม subfolder |
 | GET | `/api/alfresco/documents/:id/content` | เปิด/ดาวน์โหลดไฟล์ด้วย document id |
+| POST | `/api/alfresco/documents` | อัปโหลดไฟล์เข้า folder |
+| PATCH | `/api/alfresco/documents/:id` | แก้ชื่อไฟล์ |
+| DELETE | `/api/alfresco/documents/:id` | ลบไฟล์ |
 
 ## 5. Endpoint Details
 
@@ -413,6 +422,51 @@ Content-Disposition: inline; filename="file.pdf"
 
 ใน Postman ให้ใช้ `Send and Download` ถ้าต้องการบันทึกไฟล์
 
+## 5.6 Write Documents
+
+กลุ่มนี้ใช้สำหรับอัปโหลด, แก้ชื่อไฟล์, ลบไฟล์ ต้องใช้ `WRITE_API_TOKEN`
+
+### Upload Document
+
+```http
+POST /api/alfresco/documents
+Authorization: Bearer <WRITE_API_TOKEN>
+Content-Type: multipart/form-data
+```
+
+Body แบบ `form-data`:
+
+| Parameter | Required | Type | Example | ความหมาย |
+|---|---:|---|---|---|
+| `folderPath` | Yes | string | `/Sites/tg-saving/documentLibrary/การเงิน` | folder ที่ต้องการอัปโหลดไฟล์เข้าไป |
+| `file` | Yes | file | `contract.pdf` | ไฟล์ที่ต้องการอัปโหลด |
+| `name` | No | string | `23017_116969.pdf` | ชื่อไฟล์ที่ต้องการบันทึก ถ้าไม่ส่งจะใช้ชื่อไฟล์เดิม |
+
+### Rename Document
+
+```http
+PATCH /api/alfresco/documents/:id
+Authorization: Bearer <WRITE_API_TOKEN>
+Content-Type: application/json
+```
+
+Body:
+
+```json
+{
+  "name": "new-file-name.pdf"
+}
+```
+
+### Delete Document
+
+```http
+DELETE /api/alfresco/documents/:id
+Authorization: Bearer <WRITE_API_TOKEN>
+```
+
+หมายเหตุ: สิทธิ์สุดท้ายในการ upload, rename, delete อิงจาก service account ที่ `alfresco-api` ใช้ไปเรียก Alfresco
+
 ## 6. Error Response Format
 
 รูปแบบ error กลางของระบบ:
@@ -533,6 +587,7 @@ const buffer = await res.arrayBuffer();
 |---|---|
 | `baseUrl` | `http://localhost:3005` |
 | `token` | `<API_TOKEN>` |
+| `writeToken` | `<WRITE_API_TOKEN>` |
 | `documentLibraryPath` | `/Sites/tg-saving/documentLibrary` |
 | `folderPath` | `/Sites/tg-saving/documentLibrary/การเงิน` |
 
@@ -541,6 +596,12 @@ Authorization tab:
 ```text
 Type: Bearer Token
 Token: {{token}}
+```
+
+สำหรับ upload, rename, delete ให้เปลี่ยน token เป็น:
+
+```text
+Token: {{writeToken}}
 ```
 
 Example Postman URLs:

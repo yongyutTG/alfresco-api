@@ -31,7 +31,25 @@ function requireBearerToken(req, res, next) {
   next();
 }
 
+// ใช้กับ API ที่แก้ไขข้อมูลใน Alfresco เช่น upload, rename, delete
+// ต้องส่ง Header: Authorization: Bearer <WRITE_API_TOKEN>
+function requireWriteBearerToken(req, res, next) {
+  if (!env.writeApiToken) {
+    return res.status(500).json({ message: "WRITE_API_TOKEN is not configured" });
+  }
+
+  const authorization = req.get("authorization") || "";
+  const [scheme, token] = authorization.split(" ");
+
+  if (scheme !== "Bearer" || token !== env.writeApiToken) {
+    return res.status(401).json({ message: "Unauthorized: missing or invalid Write Bearer token" });
+  }
+
+  next();
+}
+
 module.exports = {
   requireLocalhost,
   requireBearerToken,
+  requireWriteBearerToken,
 };

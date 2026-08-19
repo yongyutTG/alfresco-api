@@ -30,7 +30,10 @@ Authorization: Bearer YOUR_API_TOKEN
 
 ```env
 API_TOKEN=your_bearer_token
+WRITE_API_TOKEN=your_write_bearer_token
 ```
+
+สำหรับ endpoint ที่แก้ไขข้อมูล เช่น upload, rename, delete ต้องใช้ `WRITE_API_TOKEN` แทน `API_TOKEN`
 
 ตัวอย่างเรียกด้วย JavaScript:
 
@@ -59,6 +62,9 @@ fetch("http://localhost:3005/api/alfresco/folders?path=/Sites/tg-saving/document
 | GET | `/api/alfresco/documents?folderPath=/Sites/tg-saving/documentLibrary/การเงิน&q=026277&maxItems=100` | ค้นหาเอกสารจากชื่อไฟล์แบบ LIKE |
 | GET | `/api/alfresco/documents?folderPath=/Sites/tg-saving/documentLibrary/การเงิน&exactName=23017_116969.pdf&maxItems=100` | ค้นหาชื่อไฟล์เต็มแบบ `=` |
 | GET | `/api/alfresco/documents/:id/content?name=file.pdf` | เปิดหรือดาวน์โหลดไฟล์ด้วย document id |
+| POST | `/api/alfresco/documents` | อัปโหลดไฟล์ ใช้ `WRITE_API_TOKEN` |
+| PATCH | `/api/alfresco/documents/:id` | แก้ชื่อไฟล์ ใช้ `WRITE_API_TOKEN` |
+| DELETE | `/api/alfresco/documents/:id` | ลบไฟล์ ใช้ `WRITE_API_TOKEN` |
 
 ## ตัวอย่างใช้งาน
 
@@ -92,6 +98,37 @@ http://localhost:3005/api/alfresco/documents?folderPath=/Sites/tg-saving/documen
 
 ```text
 http://localhost:3005/api/alfresco/documents/7b815e16-a594-4864-9665-cfda64e8d880%3B1.0/content?name=026277_019376_001-21-00661-5.pdf
+```
+
+อัปโหลดไฟล์:
+
+```http
+POST http://localhost:3005/api/alfresco/documents
+Authorization: Bearer <WRITE_API_TOKEN>
+Content-Type: multipart/form-data
+
+folderPath=/Sites/tg-saving/documentLibrary/การเงิน
+file=<เลือกไฟล์>
+name=optional-file-name.pdf
+```
+
+แก้ชื่อไฟล์:
+
+```http
+PATCH http://localhost:3005/api/alfresco/documents/<DOCUMENT_ID>
+Authorization: Bearer <WRITE_API_TOKEN>
+Content-Type: application/json
+
+{
+  "name": "new-file-name.pdf"
+}
+```
+
+ลบไฟล์:
+
+```http
+DELETE http://localhost:3005/api/alfresco/documents/<DOCUMENT_ID>
+Authorization: Bearer <WRITE_API_TOKEN>
 ```
 
 ## Response สำคัญ
@@ -141,6 +178,8 @@ ALFRESCO_HOST=IP server
 ALFRESCO_USER=your_user
 ALFRESCO_PASS=your_password
 PORT=3005
+API_TOKEN=read_token
+WRITE_API_TOKEN=write_token
 ```
 
 หลังแก้ `.env` ต้อง restart Node API
@@ -167,4 +206,3 @@ Restart Apache แล้วเรียกผ่าน Apache เช่น:
 ```text
 http://localhost/node-api/api/alfresco/folders?path=/Sites/tg-saving/documentLibrary
 ```
-
