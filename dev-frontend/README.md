@@ -5,7 +5,7 @@ Frontend ตัวอย่างสำหรับ dev ใช้ดูราย
 ## เปิดใช้งาน
 
 ```text
-http://localhost:3000/dev-frontend/
+http://localhost:3005/dev-frontend/
 ```
 
 ## Flow ของหน้า Demo
@@ -40,7 +40,7 @@ Authorization: Bearer <API_TOKEN>
 โหลด folder:
 
 ```js
-fetch("http://localhost:3000/api/alfresco/folders?path=/Sites/tg-saving/documentLibrary", {
+fetch("http://localhost:3005/api/alfresco/folders?path=/Sites/tg-saving/documentLibrary", {
   headers: {
     Authorization: "Bearer <API_TOKEN>",
   },
@@ -50,7 +50,7 @@ fetch("http://localhost:3000/api/alfresco/folders?path=/Sites/tg-saving/document
 ค้นหาไฟล์:
 
 ```js
-fetch("http://localhost:3000/api/alfresco/documents?folderPath=/Sites/tg-saving/documentLibrary/การเงิน&q=026277&maxItems=10", {
+fetch("http://localhost:3005/api/alfresco/documents?folderPath=/Sites/tg-saving/documentLibrary/การเงิน&q=026277&maxItems=10", {
   headers: {
     Authorization: "Bearer <API_TOKEN>",
   },
@@ -60,7 +60,7 @@ fetch("http://localhost:3000/api/alfresco/documents?folderPath=/Sites/tg-saving/
 เปิดไฟล์ PDF:
 
 ```js
-fetch("http://localhost:3000/api/alfresco/documents/7b815e16-a594-4864-9665-cfda64e8d880%3B1.0/content?name=file.pdf", {
+fetch("http://localhost:3005/api/alfresco/documents/7b815e16-a594-4864-9665-cfda64e8d880%3B1.0/content?name=file.pdf", {
   headers: {
     Authorization: "Bearer <API_TOKEN>",
   },

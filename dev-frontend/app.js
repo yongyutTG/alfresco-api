@@ -264,7 +264,7 @@ els.fileRows.addEventListener("click", (event) => {
   if (button) openDocument(button.dataset.url);
 });
 
-els.apiBaseUrl.value = window.location.origin || "http://localhost:3000";
+els.apiBaseUrl.value = window.location.origin || "http://localhost:3005";
 setLoading(false);
 loadFolderOptions();
 

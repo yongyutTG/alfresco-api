@@ -9,7 +9,7 @@
 Production / internal gateway URL ให้ใช้ตามที่ผู้ดูแลระบบแจ้ง เช่น:
 
 ```text
-http://localhost:3000
+http://localhost:3005
 ```
 
 ถ้านำไปวางหลัง Apache Reverse Proxy อาจเป็น:
@@ -21,7 +21,7 @@ http://your-domain/node-api
 ตัวอย่างในเอกสารนี้ใช้:
 
 ```text
-http://localhost:3000
+http://localhost:3005
 ```
 
 ## 2. Authentication
@@ -89,7 +89,7 @@ Authentication:
 Example Request:
 
 ```http
-GET http://localhost:3000/api/health
+GET http://localhost:3005/api/health
 ```
 
 Success Response:
@@ -140,7 +140,7 @@ Query Parameters:
 Example Request:
 
 ```http
-GET http://localhost:3000/api/alfresco/folders?path=/Sites/tg-saving/documentLibrary
+GET http://localhost:3005/api/alfresco/folders?path=/Sites/tg-saving/documentLibrary
 Authorization: Bearer <API_TOKEN>
 ```
 
@@ -205,7 +205,7 @@ Query Parameters:
 Example Request:
 
 ```http
-GET http://localhost:3000/api/alfresco/folders/files?path=/Sites/tg-saving/documentLibrary/การเงิน&maxItems=100&skipCount=0
+GET http://localhost:3005/api/alfresco/folders/files?path=/Sites/tg-saving/documentLibrary/การเงิน&maxItems=100&skipCount=0
 Authorization: Bearer <API_TOKEN>
 ```
 
@@ -267,22 +267,36 @@ Query Parameters:
 | `q` | No | string | - | `026277` | keyword สำหรับค้นจากชื่อไฟล์ ถ้าไม่ส่งจะ list ไฟล์ทั้งหมด |
 | `keyword` | No | string | - | `026277` | alias ของ `q` |
 | `name` | No | string | - | `026277` | alias ของ `q` |
+| `exactName` | No | string | - | `23017_116969.pdf` | ค้นชื่อไฟล์เต็มแบบ `cmis:name = ...` |
+| `fileName` | No | string | - | `23017_116969.pdf` | alias ของ `exactName` |
 | `maxItems` | No | number | ถ้า list default `1000`, ถ้า search default `100` | `100` | จำนวนรายการต่อหน้า |
 | `skipCount` | No | number | `0` | `0` | จำนวนรายการที่ข้าม ใช้ pagination |
 
 List Example:
 
 ```http
-GET http://localhost:3000/api/alfresco/documents?folderPath=/Sites/tg-saving/documentLibrary/การเงิน&maxItems=100&skipCount=0
+GET http://localhost:3005/api/alfresco/documents?folderPath=/Sites/tg-saving/documentLibrary/การเงิน&maxItems=100&skipCount=0
 Authorization: Bearer <API_TOKEN>
 ```
 
 Search Example:
 
 ```http
-GET http://localhost:3000/api/alfresco/documents?folderPath=/Sites/tg-saving/documentLibrary/การเงิน&q=026277&maxItems=20&skipCount=0
+GET http://localhost:3005/api/alfresco/documents?folderPath=/Sites/tg-saving/documentLibrary/การเงิน&q=026277&maxItems=20&skipCount=0
 Authorization: Bearer <API_TOKEN>
 ```
+
+Exact Name Search Example:
+
+```http
+GET http://localhost:3005/api/alfresco/documents?folderPath=/Sites/tg-saving/documentLibrary/การเงิน&exactName=23017_116969.pdf&maxItems=20&skipCount=0
+Authorization: Bearer <API_TOKEN>
+```
+
+Search Behavior:
+
+- `q`, `keyword`, `name` ใช้ CMIS `LIKE '%keyword%'` เหมาะกับค้นบางส่วนของชื่อไฟล์
+- `exactName`, `fileName` ใช้ CMIS `cmis:name = 'file.pdf'` เหมาะกับค้นชื่อไฟล์เต็ม และรองรับชื่อไฟล์ที่มี `_` หรือ `%` ได้ตรงกว่า
 
 Success Response:
 
@@ -383,7 +397,7 @@ Important:
 Example Request:
 
 ```http
-GET http://localhost:3000/api/alfresco/documents/7b815e16-a594-4864-9665-cfda64e8d880%3B1.0/content?name=file.pdf
+GET http://localhost:3005/api/alfresco/documents/7b815e16-a594-4864-9665-cfda64e8d880%3B1.0/content?name=file.pdf
 Authorization: Bearer <API_TOKEN>
 ```
 
@@ -457,7 +471,7 @@ Authorization: Bearer <API_TOKEN>
 List folders:
 
 ```js
-const baseUrl = "http://localhost:3000";
+const baseUrl = "http://localhost:3005";
 const token = process.env.ALFRESCO_API_TOKEN;
 
 const res = await fetch(`${baseUrl}/api/alfresco/folders?path=/Sites/tg-saving/documentLibrary`, {
@@ -517,7 +531,7 @@ const buffer = await res.arrayBuffer();
 
 | Variable | Example |
 |---|---|
-| `baseUrl` | `http://localhost:3000` |
+| `baseUrl` | `http://localhost:3005` |
 | `token` | `<API_TOKEN>` |
 | `documentLibraryPath` | `/Sites/tg-saving/documentLibrary` |
 | `folderPath` | `/Sites/tg-saving/documentLibrary/การเงิน` |

@@ -249,7 +249,7 @@ Node.js API Gateway
         | Alfresco user/pass จาก .env
         v
 Alfresco CMIS API</code></pre>
-        <p class="note">Base URL ตัวอย่าง: <code>http://localhost:3000</code> ถ้า deploy หลัง Apache อาจเปลี่ยนเป็น URL ที่ผู้ดูแลระบบกำหนด เช่น <code>http://your-domain/node-api</code></p>
+        <p class="note">Base URL ตัวอย่าง: <code>http://localhost:3005</code> ถ้า deploy หลัง Apache อาจเปลี่ยนเป็น URL ที่ผู้ดูแลระบบกำหนด เช่น <code>http://your-domain/node-api</code></p>
       </section>
 
       <section id="auth">
@@ -315,7 +315,7 @@ Alfresco CMIS API</code></pre>
           </table>
         </div>
         <h3>Example</h3>
-        <pre><code>GET http://localhost:3000/api/alfresco/folders?path=/Sites/tg-saving/documentLibrary
+        <pre><code>GET http://localhost:3005/api/alfresco/folders?path=/Sites/tg-saving/documentLibrary
 Authorization: Bearer &lt;API_TOKEN&gt;</code></pre>
       </section>
 
@@ -330,20 +330,26 @@ Authorization: Bearer &lt;API_TOKEN&gt;</code></pre>
             <tbody>
               <tr><td><code>folderPath</code></td><td>No</td><td><code>/Sites/tg-saving/documentLibrary/การเงิน</code></td><td><code>/Sites/tg-saving/documentLibrary/การเงิน</code></td><td>folder path ที่ต้องการดึงหรือค้นหาไฟล์</td></tr>
               <tr><td><code>path</code></td><td>No</td><td>-</td><td><code>/Sites/tg-saving/documentLibrary/การเงิน</code></td><td>alias ของ <code>folderPath</code></td></tr>
-              <tr><td><code>q</code></td><td>No</td><td>-</td><td><code>026277</code></td><td>keyword สำหรับค้นจากชื่อไฟล์ ถ้าไม่ส่งจะ list ไฟล์ทั้งหมด</td></tr>
+              <tr><td><code>q</code></td><td>No</td><td>-</td><td><code>026277</code></td><td>keyword สำหรับค้นจากชื่อไฟล์แบบ <code>LIKE</code> ถ้าไม่ส่งจะ list ไฟล์ทั้งหมด</td></tr>
               <tr><td><code>keyword</code></td><td>No</td><td>-</td><td><code>026277</code></td><td>alias ของ <code>q</code></td></tr>
               <tr><td><code>name</code></td><td>No</td><td>-</td><td><code>026277</code></td><td>alias ของ <code>q</code></td></tr>
+              <tr><td><code>exactName</code></td><td>No</td><td>-</td><td><code>23017_116969.pdf</code></td><td>ค้นชื่อไฟล์เต็มแบบ <code>cmis:name = ...</code></td></tr>
+              <tr><td><code>fileName</code></td><td>No</td><td>-</td><td><code>23017_116969.pdf</code></td><td>alias ของ <code>exactName</code></td></tr>
               <tr><td><code>maxItems</code></td><td>No</td><td><code>1000</code> list, <code>100</code> search</td><td><code>100</code></td><td>จำนวนรายการต่อหน้า</td></tr>
               <tr><td><code>skipCount</code></td><td>No</td><td><code>0</code></td><td><code>0</code></td><td>จำนวนรายการที่ข้าม ใช้ทำ pagination</td></tr>
             </tbody>
           </table>
         </div>
         <h3>List Example</h3>
-        <pre><code>GET http://localhost:3000/api/alfresco/documents?folderPath=/Sites/tg-saving/documentLibrary/การเงิน&amp;maxItems=100&amp;skipCount=0
+        <pre><code>GET http://localhost:3005/api/alfresco/documents?folderPath=/Sites/tg-saving/documentLibrary/การเงิน&amp;maxItems=100&amp;skipCount=0
 Authorization: Bearer &lt;API_TOKEN&gt;</code></pre>
         <h3>Search Example</h3>
-        <pre><code>GET http://localhost:3000/api/alfresco/documents?folderPath=/Sites/tg-saving/documentLibrary/การเงิน&amp;q=026277&amp;maxItems=20&amp;skipCount=0
+        <pre><code>GET http://localhost:3005/api/alfresco/documents?folderPath=/Sites/tg-saving/documentLibrary/การเงิน&amp;q=026277&amp;maxItems=20&amp;skipCount=0
 Authorization: Bearer &lt;API_TOKEN&gt;</code></pre>
+        <h3>Exact Name Search Example</h3>
+        <pre><code>GET http://localhost:3005/api/alfresco/documents?folderPath=/Sites/tg-saving/documentLibrary/การเงิน&amp;exactName=23017_116969.pdf&amp;maxItems=20&amp;skipCount=0
+Authorization: Bearer &lt;API_TOKEN&gt;</code></pre>
+        <p class="note"><code>q</code>, <code>keyword</code>, <code>name</code> ใช้ <code>LIKE</code> สำหรับค้นบางส่วน ส่วน <code>exactName</code>, <code>fileName</code> ใช้ <code>=</code> สำหรับชื่อไฟล์เต็ม เหมือน <code>UserAlfresco-api</code></p>
         <h3>Response Fields</h3>
         <pre><code>{
   "path": "/Sites/tg-saving/documentLibrary/การเงิน",
@@ -376,7 +382,7 @@ Authorization: Bearer &lt;API_TOKEN&gt;</code></pre>
             </tbody>
           </table>
         </div>
-        <pre><code>GET http://localhost:3000/api/alfresco/documents/7b815e16-a594-4864-9665-cfda64e8d880%3B1.0/content?name=file.pdf
+        <pre><code>GET http://localhost:3005/api/alfresco/documents/7b815e16-a594-4864-9665-cfda64e8d880%3B1.0/content?name=file.pdf
 Authorization: Bearer &lt;API_TOKEN&gt;</code></pre>
       </section>
 
@@ -387,7 +393,7 @@ Authorization: Bearer &lt;API_TOKEN&gt;</code></pre>
           <table>
             <thead><tr><th>Variable</th><th>Example</th></tr></thead>
             <tbody>
-              <tr><td><code>baseUrl</code></td><td><code>http://localhost:3000</code></td></tr>
+              <tr><td><code>baseUrl</code></td><td><code>http://localhost:3005</code></td></tr>
               <tr><td><code>token</code></td><td><code>&lt;API_TOKEN&gt;</code></td></tr>
               <tr><td><code>documentLibraryPath</code></td><td><code>/Sites/tg-saving/documentLibrary</code></td></tr>
               <tr><td><code>folderPath</code></td><td><code>/Sites/tg-saving/documentLibrary/การเงิน</code></td></tr>
