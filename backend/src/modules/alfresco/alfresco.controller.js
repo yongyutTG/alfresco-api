@@ -1,246 +1,286 @@
-const alfrescoRepo = require("./alfresco.repo");
 const alfrescoService = require("./alfresco.service");
 const { handleError } = require("../../middlewares/errorHandler");
+const { audit } = require("../../utils/auditLogger");
 
-// Controller = รับ req/res จาก route แล้วเรียก service/repo ที่เกี่ยวข้อง
+function getUploadedFileFromRequest(req) {
+  return {
+    buffer: req.body,
+    name: req.query.name || req.query.fileName || req.get("x-file-name"),
+    mimeType: req.get("content-type") || "application/octet-stream",
+  };
+}
+
+//ฟังชันตรวจสอบสถานะการเชื่อมต่อกับ Alfresco
 async function health(req, res) {
   try {
-    const serverInfo = await alfrescoRepo.getServerInfo();
-    res.json({ ok: true, alfresco: serverInfo });
-  } catch (err) {
-    handleError(res, "Cannot connect to Alfresco", err);
-  }
-}
-
-async function folders(req, res) {
-  try {
-    const folderPath = req.query.path || "/";
-    const foldersOnly = await alfrescoService.listFolders(folderPath);
-    res.json(foldersOnly);
-  } catch (err) {
-    handleError(res, "Cannot list Alfresco folders", err);
-  }
-}
-
-async function foldersFiles(req, res) {
-  try {
-    const folderPath = req.query.path || "/Sites/tg-saving/documentLibrary/การเงิน";
-    const result = await alfrescoService.listDocumentsInTree(folderPath, req.query);
-    res.json(alfrescoService.withNextSkipCount(result));
-  } catch (err) {
-    handleError(res, "Cannot list Alfresco folder files", err);
-  }
-}
-
-async function documents(req, res) {
-  try {
-    const folderPath = req.query.folderPath || req.query.path || "/Sites/tg-saving/documentLibrary/การเงิน";
-    const exactName = req.query.exactName || req.query.fileName;
-    const result = await alfrescoService.findDocuments(folderPath, {
-      ...req.query,
-      exactName,
-    });
-
-    res.json(alfrescoService.withNextSkipCount(result));
-  } catch (err) {
-    handleError(res, "Cannot list Alfresco documents", err);
-  }
-}
-
-async function documentContent(req, res) {
-  try {
-    await alfrescoService.streamDocumentContent(res, req.params.id, req.query.name);
-  } catch (err) {
-    handleError(res, "Cannot download Alfresco document", err);
-  }
-}
-
-async function uploadDocument(req, res) {
-  try {
-    const folderPath = req.body.folderPath || req.body.path || "/Sites/tg-saving/documentLibrary/การเงิน";
-    const fileName = req.body.name || req.body.fileName || req.file?.originalname;
-    const document = await alfrescoService.uploadDocument(folderPath, req.file, fileName);
-
-    res.status(201).json({
-      message: "Uploaded document successfully",
-      document,
-    });
-  } catch (err) {
-    handleError(res, "Cannot upload Alfresco document", err);
-  }
-}
-
-async function renameDocument(req, res) {
-  try {
-    const fileName = req.body.name || req.body.fileName;
-    const document = await alfrescoService.renameDocument(req.params.id, fileName);
-
-    res.json({
-      message: "Renamed document successfully",
-      document,
-    });
-  } catch (err) {
-    handleError(res, "Cannot rename Alfresco document", err);
-  }
-}
-
-async function deleteDocument(req, res) {
-  try {
-    const result = await alfrescoService.deleteDocument(req.params.id);
-
-    res.json({
-      message: "Deleted document successfully",
-      ...result,
-    });
-  } catch (err) {
-    handleError(res, "Cannot delete Alfresco document", err);
-  }
-}
-
-async function root(req, res) {
-  try {
-    const items = await alfrescoService.listChildren("/");
-    res.json(items);
-  } catch (err) {
-    handleError(res, "Cannot read Alfresco root", err);
-  }
-}
-
-async function sites(req, res) {
-  try {
-    const items = await alfrescoService.listChildren("/Sites");
-    res.json(items);
-  } catch (err) {
-    handleError(res, "Cannot read Alfresco sites", err);
-  }
-}
-
-async function children(req, res) {
-  try {
-    const folderPath = req.query.path || "/";
-    const items = await alfrescoService.listChildren(folderPath);
-    res.json(items);
-  } catch (err) {
-    handleError(res, "Cannot read Alfresco folder", err);
-  }
-}
-
-async function files(req, res) {
-  try {
-    const folderPath = req.query.path || "/Sites/tg-saving/documentLibrary/การเงิน";
-    const result = await alfrescoService.listDocumentsInTree(folderPath, req.query);
+    const result = await alfrescoService.getHealth();
     res.json(result);
   } catch (err) {
-    handleError(res, "Cannot list Alfresco files", err);
+    handleError(res, "ไม่สามารถเชื่อมต่อกับ Alfresco ได้", err);
   }
 }
-
-async function fileNames(req, res) {
+//ฟังชันดึงรายการโฟลเดอร์จาก Alfresco
+async function listFolders(req, res) {
+  const folderPath = req.query.path || "/";
   try {
-    const folderPath = req.query.path || "/Sites/tg-saving/documentLibrary/การเงิน";
-    const result = await alfrescoService.listDocumentsInTree(folderPath, req.query);
-
+    const folders = await alfrescoService.listFolders(folderPath, req.alfrescoAuthHeaders);
+    audit(req, "LIST_FOLDERS", {
+      folderPath,
+      message: `List folders success: ${folders.length} item(s)`,
+    });
+    res.json(folders);
+  } catch (err) {
+    audit(req, "LIST_FOLDERS", {
+      folderPath,
+      status: "FAILED",
+      message: err.message,
+    });
+    handleError(res, "ไม่สามารถรายการโฟลเดอร์จาก Alfresco ได้", err);
+  }
+}
+//ฟังชันดึงโฟลเดอร์ย่อยทุกชั้นจาก path หลัก
+async function listFolderTree(req, res) {
+  const folderPath = req.query.path || "/";
+  try {
+    const options = { maxDepth: req.query.maxDepth };
+    const result = await alfrescoService.listFolderTree(folderPath, req.alfrescoAuthHeaders, options);
+    audit(req, "LIST_FOLDER_TREE", {
+      folderPath,
+      message: `List folder tree success: ${result.count} item(s)`,
+    });
     res.json({
-      path: result.path,
-      count: result.count,
-      total: result.total,
-      hasMoreItems: result.hasMoreItems,
-      maxItems: result.maxItems,
-      skipCount: result.skipCount,
-      nextSkipCount: result.hasMoreItems ? result.skipCount + result.count : null,
-      names: result.files.map((file) => file.name),
+      ...result,
+      username: req.alfrescoUsername,
     });
   } catch (err) {
-    handleError(res, "Cannot list Alfresco file names", err);
+    audit(req, "LIST_FOLDER_TREE", {
+      folderPath,
+      status: "FAILED",
+      message: err.message,
+    });
+    handleError(res, "ไม่สามารถดึงโฟลเดอร์ย่อยจาก Alfresco ได้", err);
   }
 }
-
-async function searchFiles(req, res) {
+//ฟังชันดึงรายการเอกสารจาก Alfresco
+async function listDocuments(req, res) {
+  const folderPath = req.query.folderPath || req.query.path || "/Sites/tg-saving/documentLibrary";
+  const q = req.query.q || req.query.keyword || req.query.name;
+  const exactName = req.query.exactName || req.query.fileName;
   try {
-    const folderPath = req.query.path || "/Sites/tg-saving/documentLibrary/การเงิน";
-    const q = req.query.q || req.query.keyword || req.query.name;
-    const exactName = req.query.exactName || req.query.fileName;
+    const options = { maxItems: req.query.maxItems, skipCount: req.query.skipCount, exactName, sortBy: req.query.sortBy, sortDirection: req.query.sortDirection };
+    const result = await alfrescoService.listOrSearchDocuments(folderPath, q, req.alfrescoAuthHeaders, options);
 
-    if ((!q || !String(q).trim()) && (!exactName || !String(exactName).trim())) {
+    audit(req, q || exactName ? "SEARCH_DOCUMENTS" : "LIST_DOCUMENTS", {
+      folderPath,
+      searchText: q || exactName || null,
+      message: `${q || exactName ? "Search" : "List"} documents success: ${result.count} item(s)`,
+    });
+
+    res.json({
+      ...result,
+      username: req.alfrescoUsername,
+    });
+  } catch (err) {
+    audit(req, q || exactName ? "SEARCH_DOCUMENTS" : "LIST_DOCUMENTS", {
+      folderPath,
+      searchText: q || exactName || null,
+      status: "FAILED",
+      message: err.message,
+    });
+    handleError(res, "ไม่สามารถรายการเอกสารจาก Alfresco ได้", err);
+  }
+}
+//ฟังชันค้นหาเอกสารโดยแยก endpoint จาก list เพื่อให้ dev ภายนอกใช้งานชัดเจน
+async function searchDocuments(req, res) {
+  const folderPath = req.query.folderPath || req.query.path || "/Sites/tg-saving/documentLibrary";
+  const q = req.query.q || req.query.keyword || req.query.name;
+  const exactName = req.query.exactName || req.query.fileName;
+  try {
+    if (!q && !exactName) {
+      audit(req, "SEARCH_DOCUMENTS", {
+        folderPath,
+        searchText: null,
+        status: "FAILED",
+        message: "Missing search parameter: q or exactName is required",
+      });
       return res.status(400).json({
-        message: "Missing search keyword",
-        example: "/api/alfresco/search-files?path=/Sites/tg-saving/documentLibrary/การเงิน&q=ATM หรือ exactName=23017_116969.pdf",
+        message: "Missing search parameter: q or exactName is required",
+        status: 400,
       });
     }
 
-    const result = await alfrescoService.findDocuments(folderPath, {
-      ...req.query,
-      q,
-      exactName,
-    });
-    res.json(alfrescoService.withNextSkipCount(result));
-  } catch (err) {
-    handleError(res, "Cannot search Alfresco files", err);
-  }
-}
+    const options = { maxItems: req.query.maxItems, skipCount: req.query.skipCount, exactName, sortBy: req.query.sortBy, sortDirection: req.query.sortDirection };
+    const result = await alfrescoService.searchDocuments(folderPath, q, req.alfrescoAuthHeaders, options);
 
-async function object(req, res) {
-  try {
-    const { id, path: objectPath } = req.query;
-
-    if (!id && !objectPath) {
-      return res.status(400).json({ message: "Missing id or path" });
-    }
-
-    const cmisObject = await alfrescoService.readObject(id, objectPath);
-    res.json(cmisObject);
-  } catch (err) {
-    handleError(res, "Cannot read Alfresco object", err);
-  }
-}
-
-async function content(req, res) {
-  try {
-    await alfrescoService.streamDocumentContent(res, req.query.id, req.query.name);
-  } catch (err) {
-    handleError(res, "Cannot download Alfresco file", err);
-  }
-}
-
-async function devDocuments(req, res) {
-  try {
-    const folderPath = req.query.folderPath || req.query.path || "/Sites/tg-saving/documentLibrary/การเงิน";
-    const exactName = req.query.exactName || req.query.fileName;
-    const result = await alfrescoService.findDocuments(folderPath, {
-      ...req.query,
-      exactName,
+    audit(req, "SEARCH_DOCUMENTS", {
+      folderPath,
+      searchText: q || exactName,
+      message: `Search documents success: ${result.count} item(s)`,
     });
 
     res.json({
-      ...alfrescoService.withNextSkipCount(result),
-      files: result.files.map((file) => ({
-        ...file,
-        downloadUrl: file.downloadUrl
-          ? file.downloadUrl.replace("/api/alfresco/", "/dev-api/alfresco/")
-          : null,
-      })),
+      ...result,
+      username: req.alfrescoUsername,
     });
   } catch (err) {
-    handleError(res, "Cannot list Alfresco documents", err);
+    audit(req, "SEARCH_DOCUMENTS", {
+      folderPath,
+      searchText: q || exactName || null,
+      status: "FAILED",
+      message: err.message,
+    });
+    handleError(res, "ไม่สามารถค้นหาเอกสารจาก Alfresco ได้", err);
+  }
+}
+//ฟังชันดึงตำแหน่งไฟล์
+async function getDocumentLocation(req, res) {
+  const documentId = req.params.id || req.query.id;
+  try {
+    const result = await alfrescoService.getDocumentLocation(documentId, req.alfrescoAuthHeaders);
+    audit(req, "VIEW_FILE_DETAIL", {
+      documentId,
+      folderPath: result.parentPath,
+      message: "Get document location success",
+    });
+    res.json(result);
+  } catch (err) {
+    audit(req, "VIEW_FILE_DETAIL", {
+      documentId,
+      status: "FAILED",
+      message: err.message,
+    });
+    handleError(res, "ไม่สามารถดึงตำแหน่งไฟล์จาก Alfresco ได้", err);
+  }
+}
+//ฟังชันแก้ไขข้อมูลเอกสาร ปัจจุบันรองรับการเปลี่ยนชื่อไฟล์ด้วย field name
+async function updateDocument(req, res) {
+  const documentId = req.params.id || req.query.id;
+  try {
+    const result = await alfrescoService.updateDocument(documentId, req.body, req.alfrescoAuthHeaders);
+    audit(req, "RENAME_FILE", {
+      documentId,
+      fileName: req.body?.name || req.body?.fileName,
+      message: "Rename file success",
+    });
+    res.json({
+      ...result,
+      username: req.alfrescoUsername,
+    });
+  } catch (err) {
+    audit(req, "RENAME_FILE", {
+      documentId,
+      fileName: req.body?.name || req.body?.fileName,
+      status: "FAILED",
+      message: err.message,
+    });
+    handleError(res, "ไม่สามารถแก้ไขเอกสารใน Alfresco ได้", err);
+  }
+}
+//ฟังชันอัปโหลดไฟล์ใหม่เข้า folder ที่ระบุ
+async function createDocument(req, res) {
+  const folderPath = req.query.folderPath || req.query.path || req.get("x-folder-path");
+  const file = getUploadedFileFromRequest(req);
+  try {
+    const result = await alfrescoService.createDocument(folderPath, file, req.alfrescoAuthHeaders);
+    audit(req, "UPLOAD_FILE", {
+      folderPath: result.path,
+      fileName: result.fileName,
+      message: "Upload file success",
+    });
+    res.status(201).json({
+      ...result,
+      username: req.alfrescoUsername,
+    });
+  } catch (err) {
+    audit(req, "UPLOAD_FILE", {
+      folderPath,
+      fileName: file.name,
+      status: "FAILED",
+      message: err.message,
+    });
+    handleError(res, "ไม่สามารถอัปโหลดเอกสารไปยัง Alfresco ได้", err);
+  }
+}
+//ฟังชันลบไฟล์ตาม document id
+async function deleteDocument(req, res) {
+  const documentId = req.params.id || req.query.id;
+  try {
+    const result = await alfrescoService.deleteDocument(documentId, req.alfrescoAuthHeaders);
+    audit(req, "DELETE_FILE", {
+      documentId,
+      fileName: req.query.name,
+      message: "Delete file success",
+    });
+    res.json({
+      ...result,
+      username: req.alfrescoUsername,
+    });
+  } catch (err) {
+    audit(req, "DELETE_FILE", {
+      documentId,
+      fileName: req.query.name,
+      status: "FAILED",
+      message: err.message,
+    });
+    handleError(res, "ไม่สามารถลบเอกสารใน Alfresco ได้", err);
+  }
+}
+//ฟังชันแทนที่ content ของไฟล์เดิม
+async function replaceDocumentContent(req, res) {
+  const documentId = req.params.id || req.query.id;
+  const file = getUploadedFileFromRequest(req);
+  try {
+    const result = await alfrescoService.replaceDocumentContent(documentId, file, req.alfrescoAuthHeaders);
+    audit(req, "REPLACE_FILE_CONTENT", {
+      documentId,
+      fileName: result.fileName,
+      message: "Replace file content success",
+    });
+    res.json({
+      ...result,
+      username: req.alfrescoUsername,
+    });
+  } catch (err) {
+    audit(req, "REPLACE_FILE_CONTENT", {
+      documentId,
+      fileName: file.name,
+      status: "FAILED",
+      message: err.message,
+    });
+    handleError(res, "ไม่สามารถแทนที่เนื้อหาเอกสารใน Alfresco ได้", err);
+  }
+}
+//ฟังชันสตรีมเนื้อหาเอกสารจาก Alfresco
+async function streamDocumentContent(req, res) {
+  const action = req.query.action === "download" ? "DOWNLOAD_FILE" : "OPEN_FILE";
+  try {
+    audit(req, action, {
+      documentId: req.params.id,
+      fileName: req.query.name,
+      message: `${action === "DOWNLOAD_FILE" ? "Download" : "Open"} file requested`,
+    });
+    await alfrescoService.streamDocumentContent(res, req.params.id, req.query.name, req.alfrescoAuthHeaders);
+  } catch (err) {
+    audit(req, action, {
+      documentId: req.params.id,
+      fileName: req.query.name,
+      status: "FAILED",
+      message: err.message,
+    });
+    handleError(res, "ไม่สามารถดาวน์โหลดเอกสารจาก Alfresco ได้", err);
   }
 }
 
 module.exports = {
-  health,
-  folders,
-  foldersFiles,
-  documents,
-  documentContent,
-  uploadDocument,
-  renameDocument,
+  createDocument,
   deleteDocument,
-  root,
-  sites,
-  children,
-  files,
-  fileNames,
-  searchFiles,
-  object,
-  content,
-  devDocuments,
+  health,
+  getDocumentLocation,
+  listDocuments,
+  listFolderTree,
+  listFolders,
+  searchDocuments,
+  replaceDocumentContent,
+  streamDocumentContent,
+  updateDocument,
 };

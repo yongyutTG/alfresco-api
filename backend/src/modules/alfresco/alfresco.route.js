@@ -1,69 +1,43 @@
 const express = require("express");
-const multer = require("multer");
 const alfrescoController = require("./alfresco.controller");
-const { requireBearerToken, requireLocalhost, requireWriteBearerToken } = require("../../middlewares/auth");
 
-const apiRouter = express.Router();
-const devRouter = express.Router();
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 50 * 1024 * 1024,
-  },
+const { requireBearerToken, requireWriteBearerToken } = require("../../middlewares/auth");
+const { createAlfrescoAuthHeader } = require("../../utils/authHeader");
+const { env } = require("../../config/env");
+const router = express.Router();
+router.use((req, res, next) => {
+  const authenticate = ["GET", "HEAD"].includes(req.method) ? requireBearerToken : requireWriteBearerToken;
+  authenticate(req, res, () => {
+    if (!env.alfrescoUser || !env.alfrescoPass) {
+      return res.status(500).json({ message: "ALFRESCO_USER and ALFRESCO_PASS are not configured", status: 500 });
+    }
+    req.alfrescoUsername = env.alfrescoUser;
+    req.alfrescoAuthHeaders = createAlfrescoAuthHeader();
+    next();
+  });
+});
+const rawFileBody = express.raw({
+  type: ["application/octet-stream", "application/pdf", "image/*", "text/*", "application/*"],
+  limit: "100mb",
 });
 
-// ===== External Dev/Postman API =====
-// ทุกเส้นในกลุ่มนี้ต้องแนบ Header: Authorization: Bearer <API_TOKEN>
+router.get("/folders", alfrescoController.listFolders);
+router.get("/folders/tree", alfrescoController.listFolderTree);
+router.post("/documents", rawFileBody, alfrescoController.createDocument);
+router.get("/documents", alfrescoController.listDocuments);
+router.get("/documents/search", alfrescoController.searchDocuments);
+router.get("/documents/location", alfrescoController.getDocumentLocation);
+router.patch("/documents", alfrescoController.updateDocument);
+router.delete("/documents", alfrescoController.deleteDocument);
+router.put("/documents/content", rawFileBody, alfrescoController.replaceDocumentContent);
+router.patch("/documents/:id", alfrescoController.updateDocument);
+router.delete("/documents/:id", alfrescoController.deleteDocument);
+router.get("/documents/:id/location", alfrescoController.getDocumentLocation);
+router.get("/documents/:id/content", alfrescoController.streamDocumentContent);
+router.put("/documents/:id/content", rawFileBody, alfrescoController.replaceDocumentContent);
 
-// GET /api/health
+const apiRouter = express.Router();
 apiRouter.get("/health", alfrescoController.health);
+apiRouter.use("/alfresco", router);
 
-// GET /api/alfresco/folders?path=/Sites/tg-saving/documentLibrary
-apiRouter.get("/alfresco/folders", requireBearerToken, alfrescoController.folders);
-
-// GET /api/alfresco/folders/files?path=/Sites/tg-saving/documentLibrary/การเงิน&maxItems=100
-apiRouter.get("/alfresco/folders/files", requireBearerToken, alfrescoController.foldersFiles);
-
-// q/keyword/name = ค้นแบบ LIKE, exactName/fileName = ค้นชื่อไฟล์เต็มแบบ =
-// GET /api/alfresco/documents?folderPath=/Sites/tg-saving/documentLibrary/การเงิน&q=026277
-// GET /api/alfresco/documents?folderPath=/Sites/tg-saving/documentLibrary/การเงิน&exactName=23017_116969.pdf
-apiRouter.get("/alfresco/documents", requireBearerToken, alfrescoController.documents);
-
-// GET /api/alfresco/documents/:id/content?name=file.pdf
-apiRouter.get("/alfresco/documents/:id/content", requireBearerToken, alfrescoController.documentContent);
-
-// ===== Write API =====
-// ใช้ WRITE_API_TOKEN แยกจาก read token
-
-// POST /api/alfresco/documents
-// multipart/form-data: folderPath=<path>, file=<binary>, name=<optional file name>
-apiRouter.post("/alfresco/documents", requireWriteBearerToken, upload.single("file"), alfrescoController.uploadDocument);
-
-// PATCH /api/alfresco/documents/:id
-// application/json: { "name": "new-file-name.pdf" }
-apiRouter.patch("/alfresco/documents/:id", requireWriteBearerToken, alfrescoController.renameDocument);
-
-// DELETE /api/alfresco/documents/:id
-apiRouter.delete("/alfresco/documents/:id", requireWriteBearerToken, alfrescoController.deleteDocument);
-
-// Legacy routes: เก็บไว้เพื่อไม่ให้ระบบเดิมที่เรียก path เก่าพัง
-apiRouter.get("/alfresco/root", requireBearerToken, alfrescoController.root);
-apiRouter.get("/alfresco/sites", requireBearerToken, alfrescoController.sites);
-apiRouter.get("/alfresco/children", requireBearerToken, alfrescoController.children);
-apiRouter.get("/alfresco/files", requireBearerToken, alfrescoController.files);
-apiRouter.get("/alfresco/file-names", requireBearerToken, alfrescoController.fileNames);
-// Legacy search: รองรับ q แบบ LIKE และ exactName/fileName แบบ =
-apiRouter.get("/alfresco/search-files", requireBearerToken, alfrescoController.searchFiles);
-apiRouter.get("/alfresco/object", requireBearerToken, alfrescoController.object);
-apiRouter.get("/alfresco/content", requireBearerToken, alfrescoController.content);
-
-// ===== Dev Frontend API =====
-// ใช้เฉพาะ localhost สำหรับหน้า /dev-frontend เท่านั้น Browser ไม่ต้องถือ Bearer token เอง
-devRouter.get("/alfresco/folders", requireLocalhost, alfrescoController.folders);
-devRouter.get("/alfresco/documents", requireLocalhost, alfrescoController.devDocuments);
-devRouter.get("/alfresco/documents/:id/content", requireLocalhost, alfrescoController.documentContent);
-
-module.exports = {
-  apiRouter,
-  devRouter,
-};
+module.exports = { apiRouter, router };

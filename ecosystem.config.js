@@ -7,8 +7,8 @@ module.exports = {
       script: "server.js",
       cwd: "./backend",
       env_file: "../.env",
-      watch: true,
-      ignore_watch: ["node_modules", "../node_modules", "../server.out.log", "../server.err.log"],
+      watch: ["src", "server.js"],
+      ignore_watch: ["logs", "**/logs/**", "node_modules", "../node_modules", "../server.out.log", "../server.err.log"],
       env: {
         NODE_ENV: "development",
       },
